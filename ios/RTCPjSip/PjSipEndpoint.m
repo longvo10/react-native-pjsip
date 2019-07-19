@@ -27,6 +27,129 @@
     self.accounts = [[NSMutableDictionary alloc] initWithCapacity:12];
     self.calls = [[NSMutableDictionary alloc] initWithCapacity:12];
 
+    pj_status_t status;
+
+    // Create pjsua first
+    status = pjsua_create();
+    if (status != PJ_SUCCESS) {
+        NSLog(@"Error in pjsua_create()");
+    }
+
+    // Init pjsua
+    {
+        // Init the config structure
+        pjsua_config cfg;
+        pjsua_config_default(&cfg);
+
+        // cfg.cb.on_reg_state = [self performSelector:@selector(onRegState:) withObject: o];
+        cfg.cb.on_reg_state = &onRegStateChanged;
+        cfg.cb.on_incoming_call = &onCallReceived;
+        cfg.cb.on_call_state = &onCallStateChanged;
+        cfg.cb.on_call_media_state = &onCallMediaStateChanged;
+        cfg.cb.on_call_media_event = &onCallMediaEvent;
+
+        cfg.cb.on_pager2 = &onMessageReceived;
+        cfg.user_agent = pj_str("genCRM");
+
+        // on_call_video_state
+
+//        cfg.cfg.cb.on_call_media_state = &on_call_media_state;
+//        cfg.cfg.cb.on_incoming_call = &on_incoming_call;
+//        cfg.cfg.cb.on_call_tsx_state = &on_call_tsx_state;
+//        cfg.cfg.cb.on_dtmf_digit = &call_on_dtmf_callback;
+//        cfg.cfg.cb.on_call_redirected = &call_on_redirected;
+//        cfg.cfg.cb.on_reg_state = &on_reg_state;
+//        cfg.cfg.cb.on_incoming_subscribe = &on_incoming_subscribe;
+//        cfg.cfg.cb.on_buddy_state = &on_buddy_state;
+//        cfg.cfg.cb.on_buddy_evsub_state = &on_buddy_evsub_state;
+//        cfg.cfg.cb.on_pager = &on_pager;
+//        cfg.cfg.cb.on_typing = &on_typing;
+//        cfg.cfg.cb.on_call_transfer_status = &on_call_transfer_status;
+//        cfg.cfg.cb.on_call_replaced = &on_call_replaced;
+//        cfg.cfg.cb.on_nat_detect = &on_nat_detect;
+//        cfg.cfg.cb.on_mwi_info = &on_mwi_info;
+//        cfg.cfg.cb.on_transport_state = &on_transport_state;
+//        cfg.cfg.cb.on_ice_transport_error = &on_ice_transport_error;
+//        cfg.cfg.cb.on_snd_dev_operation = &on_snd_dev_operation;
+//        cfg.cfg.cb.on_call_media_event = &on_call_media_event;
+
+        // pjsua_vid_enum_wins(<#pjsua_vid_win_id *wids#>, <#unsigned int *count#>)
+
+        // Init the logging config structure
+        pjsua_logging_config log_cfg;
+        pjsua_logging_config_default(&log_cfg);
+        log_cfg.console_level = 10;
+
+        // Init media config
+        pjsua_media_config mediaConfig;
+        pjsua_media_config_default(&mediaConfig);
+        mediaConfig.clock_rate = PJSUA_DEFAULT_CLOCK_RATE;
+        mediaConfig.snd_clock_rate = 0;
+
+        // Init the pjsua
+        status = pjsua_init(&cfg, &log_cfg, &mediaConfig);
+        if (status != PJ_SUCCESS) {
+            NSLog(@"Error in pjsua_init()");
+        }
+    }
+
+    // Add UDP transport.
+    {
+        // Init transport config structure
+        pjsua_transport_config cfg;
+        pjsua_transport_config_default(&cfg);
+        pjsua_transport_id id;
+
+        // Add TCP transport.
+        status = pjsua_transport_create(PJSIP_TRANSPORT_UDP, &cfg, &id);
+
+        if (status != PJ_SUCCESS) {
+            NSLog(@"Error creating UDP transport");
+        } else {
+            self.udpTransportId = id;
+        }
+    }
+
+    // Add TCP transport.
+    {
+        pjsua_transport_config cfg;
+        pjsua_transport_config_default(&cfg);
+        pjsua_transport_id id;
+
+        status = pjsua_transport_create(PJSIP_TRANSPORT_TCP, &cfg, &id);
+
+        if (status != PJ_SUCCESS) {
+            NSLog(@"Error creating TCP transport");
+        } else {
+            self.tcpTransportId = id;
+        }
+    }
+
+    // Add TLS transport.
+    {
+        pjsua_transport_config cfg;
+        pjsua_transport_config_default(&cfg);
+        pjsua_transport_id id;
+
+        status = pjsua_transport_create(PJSIP_TRANSPORT_TLS, &cfg, &id);
+
+        if (status != PJ_SUCCESS) {
+            NSLog(@"Error creating TLS transport");
+        } else {
+            self.tlsTransportId = id;
+        }
+    }
+
+    // Initialization is done, now start pjsua
+    status = pjsua_start();
+    if (status != PJ_SUCCESS) NSLog(@"Error starting pjsua");
+    
+    return self;
+}
+
+
+
+- (NSDictionary *)start: (NSDictionary *)config {
 //    pj_status_t status;
 //
 //    // Create pjsua first
@@ -34,7 +157,7 @@
 //    if (status != PJ_SUCCESS) {
 //        NSLog(@"Error in pjsua_create()");
 //    }
-//
+    
 //    // Init pjsua
 //    {
 //        // Init the config structure
@@ -50,27 +173,31 @@
 //
 //        cfg.cb.on_pager2 = &onMessageReceived;
 //
+//        if(config && config[@"service"] && config[@"service"][@"ua"]) {
+//            cfg.user_agent = pj_str((char*) [ (NSString*) config[@"service"][@"ua"] UTF8String]);
+//        }
+//
 //        // on_call_video_state
 //
-////        cfg.cfg.cb.on_call_media_state = &on_call_media_state;
-////        cfg.cfg.cb.on_incoming_call = &on_incoming_call;
-////        cfg.cfg.cb.on_call_tsx_state = &on_call_tsx_state;
-////        cfg.cfg.cb.on_dtmf_digit = &call_on_dtmf_callback;
-////        cfg.cfg.cb.on_call_redirected = &call_on_redirected;
-////        cfg.cfg.cb.on_reg_state = &on_reg_state;
-////        cfg.cfg.cb.on_incoming_subscribe = &on_incoming_subscribe;
-////        cfg.cfg.cb.on_buddy_state = &on_buddy_state;
-////        cfg.cfg.cb.on_buddy_evsub_state = &on_buddy_evsub_state;
-////        cfg.cfg.cb.on_pager = &on_pager;
-////        cfg.cfg.cb.on_typing = &on_typing;
-////        cfg.cfg.cb.on_call_transfer_status = &on_call_transfer_status;
-////        cfg.cfg.cb.on_call_replaced = &on_call_replaced;
-////        cfg.cfg.cb.on_nat_detect = &on_nat_detect;
-////        cfg.cfg.cb.on_mwi_info = &on_mwi_info;
-////        cfg.cfg.cb.on_transport_state = &on_transport_state;
-////        cfg.cfg.cb.on_ice_transport_error = &on_ice_transport_error;
-////        cfg.cfg.cb.on_snd_dev_operation = &on_snd_dev_operation;
-////        cfg.cfg.cb.on_call_media_event = &on_call_media_event;
+//        //        cfg.cfg.cb.on_call_media_state = &on_call_media_state;
+//        //        cfg.cfg.cb.on_incoming_call = &on_incoming_call;
+//        //        cfg.cfg.cb.on_call_tsx_state = &on_call_tsx_state;
+//        //        cfg.cfg.cb.on_dtmf_digit = &call_on_dtmf_callback;
+//        //        cfg.cfg.cb.on_call_redirected = &call_on_redirected;
+//        //        cfg.cfg.cb.on_reg_state = &on_reg_state;
+//        //        cfg.cfg.cb.on_incoming_subscribe = &on_incoming_subscribe;
+//        //        cfg.cfg.cb.on_buddy_state = &on_buddy_state;
+//        //        cfg.cfg.cb.on_buddy_evsub_state = &on_buddy_evsub_state;
+//        //        cfg.cfg.cb.on_pager = &on_pager;
+//        //        cfg.cfg.cb.on_typing = &on_typing;
+//        //        cfg.cfg.cb.on_call_transfer_status = &on_call_transfer_status;
+//        //        cfg.cfg.cb.on_call_replaced = &on_call_replaced;
+//        //        cfg.cfg.cb.on_nat_detect = &on_nat_detect;
+//        //        cfg.cfg.cb.on_mwi_info = &on_mwi_info;
+//        //        cfg.cfg.cb.on_transport_state = &on_transport_state;
+//        //        cfg.cfg.cb.on_ice_transport_error = &on_ice_transport_error;
+//        //        cfg.cfg.cb.on_snd_dev_operation = &on_snd_dev_operation;
+//        //        cfg.cfg.cb.on_call_media_event = &on_call_media_event;
 //
 //        // pjsua_vid_enum_wins(<#pjsua_vid_win_id *wids#>, <#unsigned int *count#>)
 //
@@ -142,134 +269,8 @@
 //    // Initialization is done, now start pjsua
 //    status = pjsua_start();
 //    if (status != PJ_SUCCESS) NSLog(@"Error starting pjsua");
-    
-    return self;
-}
-
-
-
-- (NSDictionary *)start: (NSDictionary *)config {
-    pj_status_t status;
-    
-    // Create pjsua first
-    status = pjsua_create();
-    if (status != PJ_SUCCESS) {
-        NSLog(@"Error in pjsua_create()");
-    }
-    
-    // Init pjsua
-    {
-        // Init the config structure
-        pjsua_config cfg;
-        pjsua_config_default(&cfg);
-        
-        // cfg.cb.on_reg_state = [self performSelector:@selector(onRegState:) withObject: o];
-        cfg.cb.on_reg_state = &onRegStateChanged;
-        cfg.cb.on_incoming_call = &onCallReceived;
-        cfg.cb.on_call_state = &onCallStateChanged;
-        cfg.cb.on_call_media_state = &onCallMediaStateChanged;
-        cfg.cb.on_call_media_event = &onCallMediaEvent;
-        
-        cfg.cb.on_pager2 = &onMessageReceived;
-        
-        if(config && config[@"service"] && config[@"service"][@"ua"]) {
-            cfg.user_agent = pj_str((char*) [ (NSString*) config[@"service"][@"ua"] UTF8String])
-        }
-        
-        // on_call_video_state
-        
-        //        cfg.cfg.cb.on_call_media_state = &on_call_media_state;
-        //        cfg.cfg.cb.on_incoming_call = &on_incoming_call;
-        //        cfg.cfg.cb.on_call_tsx_state = &on_call_tsx_state;
-        //        cfg.cfg.cb.on_dtmf_digit = &call_on_dtmf_callback;
-        //        cfg.cfg.cb.on_call_redirected = &call_on_redirected;
-        //        cfg.cfg.cb.on_reg_state = &on_reg_state;
-        //        cfg.cfg.cb.on_incoming_subscribe = &on_incoming_subscribe;
-        //        cfg.cfg.cb.on_buddy_state = &on_buddy_state;
-        //        cfg.cfg.cb.on_buddy_evsub_state = &on_buddy_evsub_state;
-        //        cfg.cfg.cb.on_pager = &on_pager;
-        //        cfg.cfg.cb.on_typing = &on_typing;
-        //        cfg.cfg.cb.on_call_transfer_status = &on_call_transfer_status;
-        //        cfg.cfg.cb.on_call_replaced = &on_call_replaced;
-        //        cfg.cfg.cb.on_nat_detect = &on_nat_detect;
-        //        cfg.cfg.cb.on_mwi_info = &on_mwi_info;
-        //        cfg.cfg.cb.on_transport_state = &on_transport_state;
-        //        cfg.cfg.cb.on_ice_transport_error = &on_ice_transport_error;
-        //        cfg.cfg.cb.on_snd_dev_operation = &on_snd_dev_operation;
-        //        cfg.cfg.cb.on_call_media_event = &on_call_media_event;
-        
-        // pjsua_vid_enum_wins(<#pjsua_vid_win_id *wids#>, <#unsigned int *count#>)
-        
-        // Init the logging config structure
-        pjsua_logging_config log_cfg;
-        pjsua_logging_config_default(&log_cfg);
-        log_cfg.console_level = 10;
-        
-        // Init media config
-        pjsua_media_config mediaConfig;
-        pjsua_media_config_default(&mediaConfig);
-        mediaConfig.clock_rate = PJSUA_DEFAULT_CLOCK_RATE;
-        mediaConfig.snd_clock_rate = 0;
-        
-        // Init the pjsua
-        status = pjsua_init(&cfg, &log_cfg, &mediaConfig);
-        if (status != PJ_SUCCESS) {
-            NSLog(@"Error in pjsua_init()");
-        }
-    }
-    
-    // Add UDP transport.
-    {
-        // Init transport config structure
-        pjsua_transport_config cfg;
-        pjsua_transport_config_default(&cfg);
-        pjsua_transport_id id;
-        
-        // Add TCP transport.
-        status = pjsua_transport_create(PJSIP_TRANSPORT_UDP, &cfg, &id);
-        
-        if (status != PJ_SUCCESS) {
-            NSLog(@"Error creating UDP transport");
-        } else {
-            self.udpTransportId = id;
-        }
-    }
-    
-    // Add TCP transport.
-    {
-        pjsua_transport_config cfg;
-        pjsua_transport_config_default(&cfg);
-        pjsua_transport_id id;
-        
-        status = pjsua_transport_create(PJSIP_TRANSPORT_TCP, &cfg, &id);
-        
-        if (status != PJ_SUCCESS) {
-            NSLog(@"Error creating TCP transport");
-        } else {
-            self.tcpTransportId = id;
-        }
-    }
-    
-    // Add TLS transport.
-    {
-        pjsua_transport_config cfg;
-        pjsua_transport_config_default(&cfg);
-        pjsua_transport_id id;
-        
-        status = pjsua_transport_create(PJSIP_TRANSPORT_TLS, &cfg, &id);
-        
-        if (status != PJ_SUCCESS) {
-            NSLog(@"Error creating TLS transport");
-        } else {
-            self.tlsTransportId = id;
-        }
-    }
-    
-    // Initialization is done, now start pjsua
-    status = pjsua_start();
-    if (status != PJ_SUCCESS) NSLog(@"Error starting pjsua");
-    
-    
+//
+//
     
     
     NSMutableArray *accountsResult = [[NSMutableArray alloc] initWithCapacity:[@([self.accounts count]) unsignedIntegerValue]];
