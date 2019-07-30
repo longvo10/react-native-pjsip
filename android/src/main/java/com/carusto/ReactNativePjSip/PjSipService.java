@@ -973,10 +973,14 @@ public class PjSipService extends Service {
         mCalls.add(call);
         mEmitter.fireCallReceivedEvent(call);
         // 180 ringing
-            
-        CallOpParam callOpParam = new CallOpParam();
-        callOpParam.setStatusCode(pjsip_status_code.PJSIP_SC_RINGING);
-        call.answer(callOpParam);
+        try {
+            CallOpParam callOpParam = new CallOpParam();
+            callOpParam.setStatusCode(pjsip_status_code.PJSIP_SC_RINGING);
+            call.answer(callOpParam);
+        } catch(Exception e)  {
+            Log.w(TAG, "Failed to send 180 ringing", e);
+        } 
+        
     }
 
     void emmitCallStateChanged(PjSipCall call, OnCallStateParam prm) {
