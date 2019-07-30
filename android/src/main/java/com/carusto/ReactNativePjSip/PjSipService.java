@@ -972,6 +972,11 @@ public class PjSipService extends Service {
         // -----
         mCalls.add(call);
         mEmitter.fireCallReceivedEvent(call);
+        // 180 ringing
+            
+        CallOpParam callOpParam = new CallOpParam();
+        callOpParam.setStatusCode(pjsip_status_code.PJSIP_SC_RINGING);
+        call.answer(callOpParam);
     }
 
     void emmitCallStateChanged(PjSipCall call, OnCallStateParam prm) {
